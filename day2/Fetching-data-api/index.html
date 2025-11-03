@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meal Explorer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>🍽️ Meal Explorer</h1>
+
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="Search by Name or Category..." />
+
+    <select id="sortSelect">
+      <option value="">Sort by</option>
+      <option value="name-asc">Name (A → Z)</option>
+      <option value="name-desc">Name (Z → A)</option>
+      <option value="area-asc">Area (A → Z)</option>
+      <option value="area-desc">Area (Z → A)</option>
+    </select>
+  </div>
+
+  <div id="mealContainer" class="meal-container"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
