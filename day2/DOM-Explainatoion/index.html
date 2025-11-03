@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM explaination</title>
+</head>
+<body>
+    <h1 id="title">Title</h1>
+    <p class="info">Its a p tag</p>
+    <p class="info">Its a another p tag</p>
+    <div>Content inside a div</div>
+</body>
+
+<script>
+    //get element by id method
+    const title=document.getElementById('title');
+    title.style.color="blue";
+
+    //get element by className method
+
+    const paragraph=document.getElementsByClassName("info")
+    paragraph[0].style.fontWeight="bold";
+
+    //get element by tagName
+
+    const paragraph=document.getElementsByTagName("div");
+    div[0].style.color="green";
+    
+    //querySelector
+
+    const query=document.querySelector(".info");
+    query.style.color="yellow";
+
+    //querySelectorAll()
+
+    const para=document.querySelectorAll(".info");
+    para.forEach(p=>p.style.fontSize="20px");
+
+</script>
+</html>
