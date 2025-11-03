@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Weather + Maps App</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <style></style>
+  <body>
+    <div class="app">
+      <header>
+        <h1>Weather + 5-Day Forecast + Google Maps</h1>
+        <div class="controls">
+          <input
+            id="searchInput"
+            type="text"
+            placeholder="Search city (press Enter)"
+          />
+          <button id="forecastBtn">5-Day Forecast</button>
+        </div>
+      </header>
+
+      <section class="main">
+        <div>
+          <div class="weather-card" id="weatherCard">
+            <div class="top">
+              <div>
+                <div class="city" id="cityName">—</div>
+                <div class="hint" id="coordsHint">lat: — lon: —</div>
+              </div>
+              <div class="icon" id="weatherIcon"><img src="" alt="icon" /></div>
+            </div>
+
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 18px;
+                margin-top: 8px;
+              "
+            >
+              <div class="temp" id="temp">--°C</div>
+              <div>
+                <div id="condition" style="font-weight: 600">—</div>
+                <div class="small" id="description">—</div>
+              </div>
+            </div>
+
+            <div class="meta" id="meta">
+              <div id="humidity">Humidity: —%</div>
+              <div id="wind">Wind: — m/s</div>
+              <div id="sunrise">Sunrise: —</div>
+              <div id="sunset">Sunset: —</div>
+            </div>
+
+            <p class="hint" id="status"></p>
+          </div>
+
+          <div class="forecast-page" id="forecastPage">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 8px;
+              "
+            >
+              <h3 style="margin: 0">5-Day Forecast</h3>
+              <button id="backBtn">Back</button>
+            </div>
+            <div class="days" id="daysContainer"></div>
+          </div>
+        </div>
+
+        <div class="map-wrap">
+          <div id="map"></div>
+          <p class="hint" style="margin-top: 8px">
+            <!-- Map powered by Google Maps. Replace the API key in the code and
+            enable Maps JavaScript API in your Google Cloud Console. -->
+          </p>
+        </div>
+      </section>
+
+      <footer>
+        Notes: Geolocation requests work only on secure contexts (https or
+        localhost). If geolocation is blocked, search any city in the input
+        above and press Enter.
+      </footer>
+    </div>
+
+    <script>
+      // ------------------------------------------------------------------
+      const OWM_API_KEY = "e6e8a4982a8c4d2de1139b1b6a8faecf";
+      const GOOGLE_API_KEY = "AIzaSyD_hfrNqpefZDQ_I76VMToNsmMjcn10EZ4";
+      // ------------------------------------------------------------------
+
+      // state
+      let map, marker;
+      let lastCoords = { lat: null, lon: null };
+
+      const $ = (id) => document.getElementById(id);
+
+      // Helpers
+      function pad(n) {
+        return String(n).padStart(2, "0");
+      }
+      function formatTimeUnix(unixSec, tzOffsetSec) {
+        // returns HH:MM:SS in local time of the city
+        const ms = (unixSec + tzOffsetSec) * 1000;
+        const d = new Date(ms);
+        const hh = pad(d.getUTCHours());
+        const mm = pad(d.getUTCMinutes());
+        const ss = pad(d.getUTCSeconds());
+        return `${hh}:${mm}:${ss}`;
+      }
+
+      function showStatus(msg) {
+        $("status").textContent = msg;
+      }
+
+      // Google Maps dynamic loader
+      function loadGoogleMaps() {
+        if (window.google && window.google.maps) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+          if (!GOOGLE_API_KEY || GOOGLE_API_KEY.includes("YOUR_")) {
+            console.warn("Google Maps API key not set");
+            resolve();
+            return;
+          }
+          window.initMap = function () {
+            resolve();
+          };
+          const script = document.createElement("script");
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&callback=initMap`;
+          script.async = true;
+          script.defer = true;
+          script.onerror = () => {
+            console.error("Failed to load Google Maps");
+            resolve();
+          };
+          document.head.appendChild(script);
+        });
+      }
+
+      function initMapComponent(lat = 20.5937, lon = 78.9629, zoom = 5) {
+        if (!window.google || !window.google.maps) {
+          $("map").innerHTML =
+            '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted)">Google Maps not loaded (set your API key)</div>';
+          return;
+        }
+        const center = { lat: Number(lat), lng: Number(lon) };
+        if (!map) {
+          map = new google.maps.Map($("map"), { center, zoom });
+          marker = new google.maps.Marker({ position: center, map });
+        } else {
+          map.setCenter(center);
+          map.setZoom(zoom);
+          if (!marker) {
+            marker = new google.maps.Marker({ position: center, map });
+          } else {
+            marker.setPosition(center);
+          }
+        }
+      }
+
+      // Fetch weather by coordinates
+      async function fetchWeatherByCoords(lat, lon) {
+        if (!OWM_API_KEY || OWM_API_KEY.includes("YOUR_")) {
+          showStatus("Please set your OpenWeatherMap API key in the code.");
+          return;
+        }
+        showStatus("Loading current weather...");
+        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${OWM_API_KEY}`;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("Weather fetch failed");
+          const data = await res.json();
+          renderCurrentWeather(data);
+          lastCoords = { lat: data.coord.lat, lon: data.coord.lon };
+          await loadGoogleMaps();
+          // 🩵 always re-create marker with new location
+          initMapComponent(lastCoords.lat, lastCoords.lon, 10);
+          showStatus("");
+        } catch (err) {
+          console.error(err);
+          showStatus("Could not fetch weather for that location.");
+        }
+      }
+
+      // Fetch weather by city name
+      async function fetchWeatherByCity(city) {
+        if (!city) return;
+        showStatus("Searching city...");
+        const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(
+          city
+        )}&units=metric&appid=${OWM_API_KEY}`;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("City not found");
+          const data = await res.json();
+          renderCurrentWeather(data);
+          lastCoords = { lat: data.coord.lat, lon: data.coord.lon };
+          await loadGoogleMaps();
+          // 🩵 ensure map re-centers every time
+          initMapComponent(lastCoords.lat, lastCoords.lon, 10);
+          showStatus("");
+        } catch (err) {
+          console.error(err);
+          showStatus("City not found. Check spelling.");
+        }
+      }
+
+      function renderCurrentWeather(data) {
+        const tz = data.timezone || 0; // seconds
+        $("cityName").textContent = `${data.name}, ${
+          data.sys && data.sys.country ? data.sys.country : ""
+        }`;
+        $("coordsHint").textContent = `lat: ${data.coord.lat.toFixed(
+          3
+        )} lon: ${data.coord.lon.toFixed(3)}`;
+        $("temp").textContent = `${Math.round(data.main.temp)}°C`;
+        $("condition").textContent = data.weather[0].main;
+        $("description").textContent = data.weather[0].description;
+        $("humidity").textContent = `Humidity: ${data.main.humidity}%`;
+        $("wind").textContent = `Wind: ${data.wind.speed} m/s`;
+        const icon = data.weather[0].icon;
+        $("weatherIcon").querySelector(
+          "img"
+        ).src = `https://openweathermap.org/img/wn/${icon}@2x.png`;
+        $("sunrise").textContent = `Sunrise: ${formatTimeUnix(
+          data.sys.sunrise,
+          tz
+        )}`;
+        $("sunset").textContent = `Sunset: ${formatTimeUnix(
+          data.sys.sunset,
+          tz
+        )}`;
+      }
+
+      // Forecast fetching and rendering
+      async function fetchForecast(lat, lon) {
+        if (!OWM_API_KEY || OWM_API_KEY.includes("YOUR_")) {
+          showStatus("Please set your OpenWeatherMap API key in the code.");
+          return;
+        }
+        showStatus("Loading 5-day forecast...");
+        const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${OWM_API_KEY}`;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("Forecast fetch failed");
+          const data = await res.json();
+          renderForecast(data);
+          showStatus("");
+        } catch (err) {
+          console.error(err);
+          showStatus("Could not fetch forecast for that location.");
+        }
+      }
+
+      function renderForecast(data) {
+        // data.list contains 3-hour entries, data.city.timezone is offset seconds
+        const tz = data.city.timezone || 0;
+        const groups = {}; // dateStr -> array
+        for (const item of data.list) {
+          const localTs = (item.dt + tz) * 1000;
+          const d = new Date(localTs);
+          const dateStr =
+            d.getUTCFullYear() +
+            "-" +
+            pad(d.getUTCMonth() + 1) +
+            "-" +
+            pad(d.getUTCDate());
+          if (!groups[dateStr]) groups[dateStr] = [];
+          groups[dateStr].push(item);
+        }
+        const dates = Object.keys(groups).sort();
+
+        const next5 = dates.slice(0, 5);
+        const container = $("daysContainer");
+        container.innerHTML = "";
+        for (const dateStr of next5) {
+          const arr = groups[dateStr];
+          let min = Infinity,
+            max = -Infinity;
+          const icons = {};
+          for (const e of arr) {
+            min = Math.min(min, e.main.temp_min);
+            max = Math.max(max, e.main.temp_max);
+            const code = e.weather[0].icon;
+            icons[code] = (icons[code] || 0) + 1;
+          }
+
+          const bestIcon = Object.entries(icons).sort(
+            (a, b) => b[1] - a[1]
+          )[0][0];
+
+          const parts = dateStr.split("-");
+          const friendly = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+          const opts = { weekday: "short", month: "short", day: "numeric" };
+          const friendlyStr = friendly.toLocaleDateString(undefined, opts);
+
+          const div = document.createElement("div");
+          div.className = "day";
+          div.innerHTML = `
+          <div class="small">${friendlyStr}</div>
+          <img src="https://openweathermap.org/img/wn/${bestIcon}@2x.png" alt="icon" style="width:64px;height:64px" />
+          <div style="font-weight:700;margin-top:6px">${Math.round(
+            max
+          )}° / ${Math.round(min)}°</div>
+          <div class="small" style="margin-top:4px">${
+            arr[0].weather[0].main
+          }</div>
+        `;
+          container.appendChild(div);
+        }
+      }
+
+      // UI wiring
+      document.addEventListener("DOMContentLoaded", async () => {
+        // wire search
+        $("searchInput").addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            const q = e.target.value.trim();
+            if (q) fetchWeatherByCity(q);
+          }
+        });
+        $("forecastBtn").addEventListener("click", () => {
+          if (!lastCoords.lat) {
+            showStatus(
+              "No location selected yet. Search a city or allow geolocation first."
+            );
+            return;
+          }
+          // simulate redirect to new page by toggling visibility and updating hash
+          window.location.hash = "#forecast";
+          $("forecastPage").style.display = "block";
+          $("weatherCard").style.display = "none";
+          fetchForecast(lastCoords.lat, lastCoords.lon);
+        });
+        $("backBtn").addEventListener("click", () => {
+          window.location.hash = "";
+          $("forecastPage").style.display = "none";
+          $("weatherCard").style.display = "block";
+        });
+
+        // try geolocation
+        if ("geolocation" in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const lat = pos.coords.latitude;
+              const lon = pos.coords.longitude;
+              fetchWeatherByCoords(lat, lon);
+            },
+            (err) => {
+              console.warn("Geolocation denied or failed", err);
+              showStatus(
+                "Geolocation denied or unavailable. Search a city above."
+              );
+              // still load Google Maps (without centering) so placeholder appears
+              loadGoogleMaps().then(() => initMapComponent());
+            },
+            { timeout: 10000 }
+          );
+        } else {
+          showStatus(
+            "Geolocation not supported by your browser. Search for a city."
+          );
+          loadGoogleMaps().then(() => initMapComponent());
+        }
+      });
+
+      // If user visits #forecast directly, handle back/forward
+      window.addEventListener("hashchange", () => {
+        if (window.location.hash === "#forecast") {
+          if (lastCoords.lat) {
+            $("forecastPage").style.display = "block";
+            $("weatherCard").style.display = "none";
+            fetchForecast(lastCoords.lat, lastCoords.lon);
+          }
+        } else {
+          $("forecastPage").style.display = "none";
+          $("weatherCard").style.display = "block";
+        }
+      });
+    </script>
+  </body>
+</html>
