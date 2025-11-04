@@ -39,19 +39,32 @@ async function fetchMeals(query) {
       `https://www.themealdb.com/api/json/v1/1/search.php?s=${query}`
     );
     let data = await response.json();
-    console.log(data.meals, "es");
 
-    resultsDiv.innerHTML = data.meals.map(
-      (item) =>
-        `  <div>Title : ${item.strMeal}</div>
-            <div>Area : ${item.strArea}</div>
-            <img src=${item.strMealThumb} alt="">`
-    ).join('');
+    if (!data.meals) {
+      resultsDiv.innerHTML = `<p>No meals found for "${query}"</p>`;
+      return;
+    }
+
+    resultsDiv.innerHTML = data.meals
+      .map(
+        (item) => `
+        <div class="meal-card">
+            <img src="${item.strMealThumb}" alt="${item.strMeal}">
+            <div class="meal-info">
+                <h3>${item.strMeal}</h3>
+                <p><strong>Area:</strong> ${item.strArea}</p>
+                <p><strong>Category:</strong> ${item.strCategory}</p>
+            </div>
+        </div>
+        `
+      )
+      .join("");
   } catch (error) {
     console.log("Error fetching meals", error);
+    resultsDiv.innerHTML = `<p>Error fetching meals. Please try again.</p>`;
   }
 }
-console.log(allMeals, "all");
+
 
 // function renderMeals(meals){
 //     resultsDiv.innerHTML="";
