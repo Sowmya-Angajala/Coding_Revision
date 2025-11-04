@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="./style.css">
 </head>
 <body>
+
     <div class="container">
         <h1>Meal Finder</h1>
     <!-- Search Area -->
@@ -14,6 +15,11 @@
         <div>
             <input type="text" id="searchInput" placeholder="Search for Meals....">
             <button id="searchBtn">Search</button>
+            <select  id="sortSelect">
+                <option value="">Sort</option>
+                <option value="az">A-Z</option>
+                <option value="za">Z-A</option>
+            </select>
         </div>
         <!-- Display Area  -->
         <div id="results">
