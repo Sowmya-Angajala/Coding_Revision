@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Movie Explorer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>Movie Explorer</h1>
+    <p class="subtitle">Search movies using OMDb — debounced search, throttled pagination</p>
+    <div class="search-area">
+      <label for="search" class="visually-hidden">Search movies</label>
+      <input id="search" type="search" placeholder="Search movies (e.g. Marvel, Batman...)" aria-label="Search movies" />
+      <div id="loading-indicator" class="loading" aria-hidden="true"></div>
+    </div>
+  </header>
+
+  <main>
+    <section aria-live="polite" id="status" class="status" ></section>
+
+    <section id="movies-container" class="movies-grid" aria-label="Movies">
+      <!-- Movie cards will be injected here -->
+    </section>
+
+    <nav class="pagination" aria-label="Pagination controls">
+      <button id="prev-btn" class="page-btn" aria-label="Previous page">Previous</button>
+      <div class="page-info" aria-live="polite">
+        Page <span id="current-page">1</span> of <span id="total-pages">1</span>
+      </div>
+      <button id="next-btn" class="page-btn" aria-label="Next page">Next</button>
+    </nav>
+  </main>
+
+  <footer class="footer">
+    <small>Powered by OMDb API · Accessible & responsive</small>
+  </footer>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
