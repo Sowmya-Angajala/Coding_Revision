@@ -4,21 +4,16 @@ import "./OTPInput.css";
 const OTPInput = () => {
   const [otp, setOtp] = useState(["", "", "", ""]);
   const inputRefs = useRef([]);
-
   const handleChange = (e, index) => {
     const value = e.target.value;
-    if (!/^[0-9]?$/.test(value)) return; // Allow only digits
-
+    if (!/^[0-9]?$/.test(value)) return; 
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-
-    // Move to next input if a value is entered
     if (value && index < 3) {
       inputRefs.current[index + 1].focus();
     }
   };
-
   const handleKeyDown = (e, index) => {
     if (e.key === "Backspace") {
       if (otp[index] === "") {
@@ -27,10 +22,8 @@ const OTPInput = () => {
         const newOtp = [...otp];
         newOtp[index] = "";
         setOtp(newOtp);
-      }
-    }
+      }}
   };
-
   const handlePaste = (e) => {
     const pasted = e.clipboardData.getData("text");
     if (/^\d{4}$/.test(pasted)) {
@@ -43,7 +36,6 @@ const OTPInput = () => {
     }
     e.preventDefault();
   };
-
   const handleSubmit = () => {
     const otpValue = otp.join("");
     if (otpValue.length === 4) {
@@ -52,7 +44,6 @@ const OTPInput = () => {
       alert("Please enter all 4 digits.");
     }
   };
-
   return (
     <div className="otp-container">
       <h2>Enter OTP</h2>
